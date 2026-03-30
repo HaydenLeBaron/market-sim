@@ -110,11 +110,9 @@ An English auction is an open-cry, ascending-price auction for a single item. Th
 | 7     | Alice                                                   | $250 |
 | 8     | Bob                                                     | $300 |
 | 9     | Alice                                                   | $350 |
-| 10    | Bob                                                     | $360 |
-| 11    | Alice                                                   | $370 |
-| 12    | *(Bob drops out -- price exceeds his $350 valuation)*   |      |
+| 10    | *(Bob drops out -- price matches his $350 valuation)*   |      |
 
-**Result:** Alice wins at **$370**. Notice she pays well below her $500 valuation. The final price is just above Bob's valuation ($350), not Alice's. This mirrors the second-price property: the winner effectively pays a price determined by the *second-highest* valuer.
+**Result:** Alice wins at **$350**. Notice she pays well below her $500 valuation. The final price equals Bob's valuation ($350), not Alice's. This mirrors the second-price property: the winner effectively pays a price determined by the *second-highest* valuer.
 
 ---
 
@@ -280,7 +278,7 @@ Since truthful bidding is dominant, each bids their true value:
 
 Alice's surplus: $100 - $80 = **$20**.
 
-Notice this is approximately the same outcome as the English auction walkthrough, where Alice won at $370 (just above Bob's $350 valuation). The Vickrey mechanism achieves the same result without the back-and-forth bidding rounds -- one sealed bid from each participant suffices.
+Notice this is approximately the same outcome as the English auction walkthrough, where Alice won at $350 (Bob's valuation). The Vickrey mechanism achieves the same result without the back-and-forth bidding rounds -- one sealed bid from each participant suffices.
 
 ---
 
@@ -382,7 +380,7 @@ A continuous double auction is an ongoing market where buyers and sellers can su
 ### Real-World Examples
 
 - **Stock exchanges:** NASDAQ, NYSE (continuous session), Tokyo Stock Exchange -- virtually all modern equity trading uses a CDA.
-- **Foreign exchange (Forex):** The ~$7 trillion/day forex market operates as a decentralized CDA.
+- **Foreign exchange (Forex):** The ~$7.5 trillion/day forex market operates as a decentralized CDA.
 - **Cryptocurrency exchanges:** Binance, Coinbase, Kraken -- all use CDA order books.
 
 ### Key Properties

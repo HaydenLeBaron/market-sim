@@ -53,7 +53,7 @@ With \(n\) goods, the familiar condition “MRS = MRT” generalizes pairwise:
 
 - At an interior optimum with a single budget or technology constraint,  
   \[
-  \frac{MU_i}{MU_j} = \frac{\text{(objective MRT)}_{ij}}{} \quad \text{for all } i,j,
+  \frac{MU_i}{MU_j} = MRT_{ij} \quad \text{for all } i,j,
   \]
   meaning the **gradient of utility is collinear with the gradient of the constraint**. [1cademy](https://1cademy.com/node/the-two-trade-offs-in-optimal-choice-mrs-vs-mrt/43T46jpzcqZG75ueJdCc)
 
@@ -203,7 +203,7 @@ The pattern is identical in any number of dimensions: define \(u\), take partial
 ## Q4: I guess what I mean is that in a bartering economy there are `n` goods, and `n(n-1)/2` trading pairs, but if you have money there are only `n` trading pairs (each good is only tradable for money). Am I missing something?
 
 
-You have the key idea exactly right: moving from barter to money collapses the *network* of trading relationships from roughly \(n(n-1)/2\) direct good–good links down to about \(n\) good–money links. [investopedia](https://www.investopedia.com/terms/m/mediumofexchange.asp)
+You have the key idea exactly right: moving from barter to money collapses the *network* of trading relationships from \(n(n-1)/2\) direct good–good links down to \(n\) good–money links. [investopedia](https://www.investopedia.com/terms/m/mediumofexchange.asp)
 
 ## Barter: dense network of pairs
 

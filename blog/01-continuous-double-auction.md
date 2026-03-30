@@ -58,16 +58,16 @@ Let's run through a concrete sequence. The order book starts empty.
 
 **Step 1:** The Blacksmith needs wood and places a **bid of $49 for 10 planks**.
 
-| Bid Side | Ask Side |
-|---|---|
+| Bid Side             | Ask Side  |
+| -------------------- | --------- |
 | Blacksmith: $49 x 10 | *(empty)* |
 
 No trade. There's nobody selling.
 
 **Step 2:** The Lumberjack has surplus wood and places an **ask of $51 for 10 planks**.
 
-| Bid Side | Ask Side |
-|---|---|
+| Bid Side             | Ask Side             |
+| -------------------- | -------------------- |
 | Blacksmith: $49 x 10 | Lumberjack: $51 x 10 |
 
 No trade. The bid ($49) is less than the ask ($51). Spread = $2.
@@ -76,35 +76,35 @@ No trade. The bid ($49) is less than the ask ($51). Spread = $2.
 
 The Merchant's bid ($51) >= the Lumberjack's ask ($51). **Trade executes: 5 planks at $51.**
 
-| Bid Side | Ask Side |
-|---|---|
+| Bid Side             | Ask Side                          |
+| -------------------- | --------------------------------- |
 | Blacksmith: $49 x 10 | Lumberjack: $51 x 5 *(remaining)* |
 
 **Step 4:** A Farmer places an **ask of $48 for 8 planks**.
 
 The Farmer's ask ($48) <= the Blacksmith's bid ($49). **Trade executes: 8 planks at $49.**
 
-| Bid Side | Ask Side |
-|---|---|
+| Bid Side                          | Ask Side            |
+| --------------------------------- | ------------------- |
 | Blacksmith: $49 x 2 *(remaining)* | Lumberjack: $51 x 5 |
 
 **Step 5:** A Miner places an **ask of $50 for 6 planks**.
 
 The Miner's ask ($50) > the Blacksmith's bid ($49). No trade. The order rests.
 
-| Bid Side | Ask Side |
-|---|---|
-| Blacksmith: $49 x 2 | Miner: $50 x 6 |
-| | Lumberjack: $51 x 5 |
+| Bid Side            | Ask Side            |
+| ------------------- | ------------------- |
+| Blacksmith: $49 x 2 | Miner: $50 x 6      |
+|                     | Lumberjack: $51 x 5 |
 
 The spread has tightened to $1. The market is getting more liquid.
 
 **Trade log:**
 
-| Buyer | Seller | Price | Quantity |
-|---|---|---|---|
-| Merchant | Lumberjack | $51 | 5 |
-| Blacksmith | Farmer | $49 | 8 |
+| Buyer      | Seller     | Price | Quantity |
+| ---------- | ---------- | ----- | -------- |
+| Merchant   | Lumberjack | $51   | 5        |
+| Blacksmith | Farmer     | $49   | 8        |
 
 ---
 
