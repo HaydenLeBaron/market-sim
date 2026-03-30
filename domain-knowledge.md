@@ -451,6 +451,153 @@ Spread is now $1 ($49 best bid, $50 best ask). The order book has become more li
 
 ---
 
+## 8. Automated Market Maker (AMM) — Constant Product
+
+### Definition
+
+An Automated Market Maker (AMM) is a decentralised exchange mechanism that replaces the traditional order book with a **liquidity pool** and a deterministic pricing function. The most widely adopted variant is the **Constant Product Market Maker (CPMM)**, popularised by Uniswap. Instead of matching individual buyers and sellers, traders swap assets against a pooled reserve, and the price adjusts algorithmically after every trade.
+
+The core invariant is:
+
+> **x · y = k**
+
+where *x* and *y* are the reserves of two assets in the pool and *k* is a constant that can only increase (via liquidity additions) or stay the same.
+
+### Mechanism
+
+1. **Pool creation:** A **liquidity provider (LP)** deposits equal market value of two assets (e.g., 1,000 Token A + 1,000 Token B) into a smart contract. This establishes the initial reserves (*x₀*, *y₀*) and sets *k = x₀ · y₀*.
+2. **Pricing:** The instantaneous exchange rate between the two assets is the ratio of reserves: *price_A_in_B = y / x*.
+3. **Swapping:** When a trader wants to buy Token B with Δx of Token A:
+   - They send Δx of Token A into the pool.
+   - The pool calculates the output Δy such that the invariant holds: *(x + Δx)(y - Δy) = k*
+   - Solving: *Δy = y - k / (x + Δx)*
+   - The trader receives Δy of Token B. The new reserves are *(x + Δx, y - Δy)*.
+4. **Fee (optional):** In practice, a small fee (e.g., 0.3%) is taken from the input before applying the invariant, causing *k* to grow slightly over time and rewarding LPs.
+5. **Liquidity provision/withdrawal:** LPs can add or remove liquidity at any time. They receive **LP tokens** representing their proportional share of the pool.
+
+### Real-World Examples
+
+- **Uniswap (v1/v2):** The canonical CPMM. Uniswap v2 handles arbitrary ERC-20/ERC-20 pairs and has processed hundreds of billions of dollars in volume.
+- **SushiSwap, PancakeSwap:** Forks of Uniswap deployed on Ethereum and Binance Smart Chain, respectively.
+- **Balancer:** A generalised AMM that extends the constant-product formula to weighted pools with more than two assets.
+- **Curve Finance:** Uses a modified invariant (StableSwap) optimised for assets of similar value (e.g., stablecoins), but the core idea of a pricing invariant is the same.
+
+### Key Properties
+
+| Property | Value |
+|---|---|
+| Incentive compatible? | No formal guarantee — arbitrageurs are relied upon to keep prices aligned with external markets |
+| Price discovery | Reactive — the price moves in response to trades and is anchored to external markets by arbitrage |
+| Liquidity | Always available — the pool can always quote a price, though large trades suffer significant **slippage** |
+| Information revealed | Full — pool reserves are on-chain and publicly readable at all times |
+| Impermanent loss | LPs face **impermanent loss** when the price ratio diverges from their deposit ratio |
+| Manipulation resistance | Susceptible to **sandwich attacks** and front-running in a public mempool |
+
+### Price Discovery and the Role of Arbitrageurs
+
+A common question is whether a CPMM can discover prices on its own, or whether it only works when there is an external market to anchor to. The answer is: **both, but in different ways and with different strengths.**
+
+#### 1. Endogenous price discovery (no external market)
+
+Even if a CPMM pool is the *only* venue for trading Wood and Gold, prices will still move in response to supply and demand. If many traders want to buy Gold with Wood, each successive trade pushes the Gold price up (and the Wood price down). The pool passively reflects the aggregate direction of trade flow, and in that sense, it *does* discover prices.
+
+However, this form of price discovery is **weak and costly** compared to an order book:
+
+- **Every price update requires an actual trade.** In a CDA, a trader can post a limit order (expressing a belief about fair value) without spending anything until the order fills. In a CPMM, the only way to signal that Gold is underpriced is to *buy Gold and pay slippage*. Information aggregation costs real capital.
+- **The price can become stale.** If no one trades, the pool price stays frozen — even if fundamentals have changed (e.g., a new gold mine was discovered). An order book updates as traders adjust or cancel their resting orders, which is free.
+- **No granularity of belief.** An order book reveals an entire distribution of beliefs (the depth at each price level). A CPMM reveals only a single number: the current reserve ratio.
+
+So in a **standalone CPMM** (no external markets), price discovery happens, but slowly, expensively, and with less information content than an order book.
+
+#### 2. Arbitrage-driven price import (external markets exist)
+
+In practice, most CPMMs operate alongside other markets (centralised exchanges, other AMM pools, OTC desks). This is where **arbitrageurs** become critical.
+
+An arbitrageur is a trader who profits from price discrepancies between venues. When the CPMM pool price diverges from the "true" market price on an external venue, the arbitrageur:
+
+1. Buys the underpriced asset on the cheaper venue.
+2. Sells it on the more expensive venue.
+3. Pockets the difference as risk-free profit.
+
+This process pushes the CPMM pool price toward the external market price. In effect, the CPMM **imports** externally-discovered prices rather than discovering them independently. The arbitrageur is the transmission mechanism.
+
+> **Key insight:** When external markets exist, arbitrageurs are responsible for the *speed* and *accuracy* of CPMM price updates. Without them, the pool price would only move through organic (non-arbitrage) trades, which is much slower and less reliable.
+
+#### 3. Summary: Order book vs. CPMM price discovery
+
+| Dimension | Order Book (CDA) | CPMM |
+|---|---|---|
+| How beliefs are expressed | Limit orders (free to place) | Trades (costly — slippage) |
+| Price updates without trades | Yes (order placement/cancellation) | No (price is purely a function of reserves) |
+| Information content | Rich (full depth at every price level) | Minimal (single reserve ratio) |
+| Stale price risk | Low (market makers adjust quotes) | High (price freezes if no trades occur) |
+| With external markets | Self-sufficient | Relies on arbitrageurs to stay accurate |
+| Without external markets | Self-sufficient | Functions, but slowly and expensively |
+
+In the context of `market-sim`, this distinction matters: if the simulation has *only* a CPMM and no other trading venue, the pool will still produce price movement, but it will lack the fast convergence that arbitrageurs provide. The simulation would need either (a) agents that act as arbitrageurs relative to some reference price, or (b) enough organic trade volume for the price to reflect supply/demand naturally.
+
+### Walkthrough Example
+
+**Setup:** A CPMM pool for Wood / Gold with initial reserves:
+
+- Wood reserve (x): 1,000 units
+- Gold reserve (y): 1,000 units
+- k = 1,000 × 1,000 = **1,000,000**
+- Initial price: 1 Wood = 1 Gold
+
+**Trade 1 — Alice buys Gold with 100 Wood:**
+
+Alice sends 100 Wood into the pool. The pool must maintain *(x + Δx)(y - Δy) = k*:
+
+- New x = 1,000 + 100 = 1,100
+- New y = k / 1,100 = 1,000,000 / 1,100 ≈ 909.09
+- Δy = 1,000 - 909.09 ≈ **90.91 Gold** (Alice receives this)
+
+| | Wood Reserve | Gold Reserve | k | Price (Wood in Gold) |
+|---|---|---|---|---|
+| **Before** | 1,000 | 1,000 | 1,000,000 | 1.000 |
+| **After Trade 1** | 1,100 | 909.09 | 1,000,000 | 0.826 |
+
+Notice Alice put in 100 Wood but received only ~90.91 Gold, not 100. This shortfall is **slippage** — the price moved against her as her trade consumed liquidity. The effective price she paid was 100 / 90.91 ≈ **1.10 Wood per Gold**, worse than the pre-trade price of 1.00.
+
+**Trade 2 — Bob buys Gold with 100 Wood:**
+
+Bob also sends 100 Wood in, but the pool state has already shifted:
+
+- New x = 1,100 + 100 = 1,200
+- New y = 1,000,000 / 1,200 ≈ 833.33
+- Δy = 909.09 - 833.33 ≈ **75.76 Gold** (Bob receives this)
+
+| | Wood Reserve | Gold Reserve | k | Price (Wood in Gold) |
+|---|---|---|---|---|
+| **After Trade 2** | 1,200 | 833.33 | 1,000,000 | 0.694 |
+
+Bob received even less Gold for the same 100 Wood because the pool was already depleted by Alice's trade. His effective rate was 100 / 75.76 ≈ **1.32 Wood per Gold**. This demonstrates how slippage scales with trade size relative to pool depth.
+
+**Trade 3 — Carol sells 200 Gold back into the pool (buys Wood):**
+
+Carol sends 200 Gold in:
+
+- New y = 833.33 + 200 = 1,033.33
+- New x = 1,000,000 / 1,033.33 ≈ 967.74
+- Δx = 1,200 - 967.74 ≈ **232.26 Wood** (Carol receives this)
+
+| | Wood Reserve | Gold Reserve | k | Price (Wood in Gold) |
+|---|---|---|---|---|
+| **After Trade 3** | 967.74 | 1,033.33 | 1,000,000 | 1.068 |
+
+The price has partially reverted toward the original 1:1 ratio. If an external market prices Wood at 1 Gold, an arbitrageur would continue trading until the pool price matches, earning risk-free profit in the process.
+
+**Summary of trades:**
+
+| Trade | Trader | Input | Output | Effective Price |
+|---|---|---|---|---|
+| 1 | Alice | 100 Wood | 90.91 Gold | 1.10 Wood/Gold |
+| 2 | Bob | 100 Wood | 75.76 Gold | 1.32 Wood/Gold |
+| 3 | Carol | 200 Gold | 232.26 Wood | 0.86 Gold/Wood |
+
+---
+
 ## Comparison Table
 
 | Mechanism | Incentive Compatible? | Price Discovery | Speed | Information Revealed During |
@@ -462,6 +609,7 @@ Spread is now $1 ($49 best bid, $50 best ask). The order book has become more li
 | **Second-Price (Vickrey)** | **Yes** (dominant strategy) | None until resolution | Fast (single round) | Minimal (winner & price) |
 | **Call Double Auction** | Approximately (large markets) | Aggregated batch | Periodic | All orders after clearing |
 | **Continuous Double Auction** | No | Continuous, real-time | Immediate (on match) | High (order book visible) |
+| **AMM (Constant Product)** | No (relies on arbitrage) | Reactive (price moves with trades) | Immediate (always quotable) | Full (reserves are public) |
 
 ---
 
@@ -483,4 +631,11 @@ Spread is now $1 ($49 best bid, $50 best ask). The order book has become more li
 - **Reserve price:** The minimum price an auctioneer will accept. If no bid meets the reserve, the item is not sold.
 - **Revenue equivalence theorem:** Under standard assumptions (IPV, risk-neutral bidders, symmetric distributions), all standard auction formats yield the same expected revenue for the seller.
 - **Vickrey auction:** A second-price sealed-bid auction. Named after William Vickrey.
+- **Automated Market Maker (AMM):** A mechanism that uses a mathematical formula and pooled liquidity instead of an order book to determine prices and execute trades.
+- **Constant Product Market Maker (CPMM):** An AMM variant where the product of the two reserve quantities (x · y = k) is held constant, ensuring the pool can always quote a price.
+- **Impermanent loss:** The reduction in value that a liquidity provider experiences compared to simply holding the deposited assets, caused by divergence in the price ratio since the time of deposit. The loss becomes "permanent" only if the LP withdraws while the ratio is still diverged.
+- **Liquidity pool:** A smart-contract-managed reserve of two (or more) assets that traders swap against, replacing the role of a traditional order book.
+- **Liquidity provider (LP):** A participant who deposits assets into a liquidity pool, earning trading fees in exchange for bearing impermanent loss risk.
+- **Sandwich attack:** A front-running strategy where an attacker places a trade before *and* after a victim's pending trade to profit from the price impact.
+- **Slippage:** The difference between the expected price of a trade and the actual executed price, caused by the trade itself moving the market.
 - **Winner's curse:** The phenomenon where the winner of an auction tends to have overpaid, particularly in common-value settings where the item's value is the same for all bidders but uncertain.
