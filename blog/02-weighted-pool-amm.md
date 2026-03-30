@@ -66,12 +66,12 @@ A weighted pool is a **universal counterparty**. Alice doesn't need to find some
 Let's set up a pool for a game with five resources, weighted by how "valuable" we want them to be at equilibrium:
 
 | Asset | Weight | Initial Reserve | Initial Price (in Gold) |
-|---|---|---|---|
-| Gold | 30% | 1,000 | 1.00 (numeraire) |
-| Iron | 25% | 5,000 | 0.167 |
-| Wood | 20% | 10,000 | 0.067 |
-| Food | 15% | 15,000 | 0.033 |
-| Stone | 10% | 20,000 | 0.017 |
+| ----- | ------ | --------------- | ----------------------- |
+| Gold  | 30%    | 1,000           | 1.00 (numeraire)        |
+| Iron  | 25%    | 5,000           | 0.167                   |
+| Wood  | 20%    | 10,000          | 0.067                   |
+| Food  | 15%    | 15,000          | 0.033                   |
+| Stone | 10%    | 20,000          | 0.017                   |
 
 Now suppose the Blacksmith agent needs Iron to forge swords. It has surplus Wood. It submits a swap: **500 Wood for Iron**.
 
