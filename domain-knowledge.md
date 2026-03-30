@@ -6,7 +6,7 @@ For foundational terminology, see the [Glossary](#glossary) at the end.
 
 ---
 
-## ⭐️ 1. Traditional Bartering
+## 👍 1. Traditional Bartering
 
 ### Definition
 
@@ -59,7 +59,7 @@ Both parties are better off by their own assessment -- this is a **Pareto improv
 
 ---
 
-## 2. English (Ascending) Auction
+## 👍 2. English (Ascending) Auction
 
 ### Definition
 
@@ -118,7 +118,7 @@ An English auction is an open-cry, ascending-price auction for a single item. Th
 
 ---
 
-## 3. Dutch (Descending) Auction
+## 👍 3. Dutch (Descending) Auction
 
 ### Definition
 
@@ -172,7 +172,7 @@ Notice: if Alice had bid optimally by shading slightly (e.g., waiting for $650),
 
 ---
 
-## 4. First-Price Sealed-Bid Auction
+## 👍 4. First-Price Sealed-Bid Auction
 
 ### Definition
 
@@ -225,7 +225,7 @@ Compare to an English auction where Alice would have won at ~$80 (Bob's dropout 
 
 ---
 
-## 5. Second-Price (Vickrey) Sealed-Bid Auction
+## 👍 5. Second-Price (Vickrey) Sealed-Bid Auction
 
 ### Definition
 
@@ -284,7 +284,7 @@ Notice this is approximately the same outcome as the English auction walkthrough
 
 ---
 
-## 6. Call (Batch) Double Auction
+## 👍 6. Call (Batch) Double Auction
 
 ### Definition
 
@@ -361,7 +361,7 @@ Total volume: **250 units** traded at **$50**.
 
 ---
 
-## 7. Continuous Double Auction (CDA)
+## ⭐️ 7. Continuous Double Auction (CDA)
 
 ### Definition
 
@@ -451,7 +451,7 @@ Spread is now $1 ($49 best bid, $50 best ask). The order book has become more li
 
 ---
 
-## 8. Automated Market Maker (AMM) — Constant Product
+## 👎 8. Automated Market Maker (AMM) — Constant Product
 
 ### Definition
 
@@ -598,7 +598,7 @@ The price has partially reverted toward the original 1:1 ratio. If an external m
 
 ---
 
-## 9. Concentrated Liquidity AMM (e.g., Uniswap v3)
+## 👎 9. Concentrated Liquidity AMM (e.g., Uniswap v3)
 
 ### Definition
 
@@ -625,7 +625,7 @@ A variation of the standard Constant Product Market Maker (CPMM) where liquidity
 
 ---
 
-## 10. StableSwap AMM (e.g., Curve)
+## 👎 10. StableSwap AMM (e.g., Curve)
 
 ### Definition
 
@@ -650,7 +650,7 @@ An AMM designed specifically for assets that are expected to trade at parity (e.
 
 ---
 
-## 11. Weighted Pool AMM (e.g., Balancer)
+## ⭐️ 11. Weighted Pool AMM (e.g., Balancer)
 
 ### Definition
 
@@ -689,7 +689,7 @@ Weighted pools unlock sophisticated strategies that are impossible in a standard
 
 ---
 
-## 12. Virtual AMM (vAMM)
+## 👎 12. Virtual AMM (vAMM)
 
 ### Definition
 
@@ -715,7 +715,7 @@ An AMM that uses the `x · y = k` pricing formula but holds no real asset reserv
 
 ---
 
-## 13. Proactive Market Maker (PMM)
+## 👎 13. Proactive Market Maker (PMM)
 
 ### Definition
 
@@ -740,7 +740,7 @@ An AMM model that relies heavily on an external price oracle to concentrate liqu
 
 ---
 
-## 14. Frequent Batch Auction (FBA)
+## 👍 14. Frequent Batch Auction (FBA)
 
 ### Definition
 
@@ -766,7 +766,7 @@ A market mechanism where trading time is discretized into an ongoing series of e
 
 ---
 
-## 15. Combinatorial Auction
+## ⭐️ 15. Combinatorial Auction
 
 ### Definition
 
@@ -811,7 +811,7 @@ The most famous theoretical combinatorial auction is the **Vickrey-Clarke-Groves
 
 ---
 
-## 16. All-Pay Auction
+## ⭐️16. All-Pay Auction
 
 ### Definition
 
@@ -866,7 +866,7 @@ An all-pay auction is a mechanism where the highest bidder wins the item, but **
 
 ---
 
-## 17. Candle Auction
+## 👎 17. Candle Auction
 
 ### Definition
 
