@@ -30,18 +30,78 @@ def Bundle := Commodity → Quantity
 -- Addition and Subtraction of bundles happens element-wise
 def Bundle.add (b1 b2 : Bundle) : Bundle := fun c => b1 c + b2 c
 def Bundle.sub (b1 b2 : Bundle) : Bundle := fun c => b1 c - b2 c
+
+-- Convenience: enumerate all commodities for fold-based computations
+def allCommodities : List Commodity :=
+  [.Manna, .Wood, .MithrilMetal, .Influence]
 ```
 
 ## 3. Value and Preferences (Utility & MRS)
 
 To navigate the universe of goods, agents must be able to intrinsically value them.
 
-*   **Utility ($U$)**: A measure mapping a bundle of goods to a real number ($\mathbb{R}$). It obeys axioms of Completeness, Transitivity, and Non-satiation.
-    *  [ ] TODO: Give me a few canonical examples of utility functions and the assumptions they make. For example, the Cobb-Douglas Utility function, the Leontief Utility function, and the Quasilinear Utility function.
-       *  [ ] If I remember correctly, Cobb-Douglas  assumes Completeness, Transitivity, and Non-Satiation, but go into more detail as to what those mean formally.
+*   **Utility ($U$)**: A measure mapping a bundle of goods to a real number ($\mathbb{R}$). It obeys three axioms:
+    *   **Completeness**: For any two bundles $b_1, b_2$, either $U(b_1) \geq U(b_2)$ or $U(b_2) \geq U(b_1)$. Since $U$ maps into $\mathbb{R}$ and $\mathbb{R}$ is totally ordered, this is automatically satisfied by any real-valued function — it costs us nothing.
+    *   **Transitivity**: If $U(b_1) \geq U(b_2)$ and $U(b_2) \geq U(b_3)$, then $U(b_1) \geq U(b_3)$. Again, this follows directly from transitivity of $\leq$ on $\mathbb{R}$. Any real-valued function is automatically transitive.
+    *   **Non-Satiation (Strict Monotonicity)**: For any bundle $b$ and commodity $c$, adding a positive quantity of $c$ strictly increases utility: $U(b + \epsilon \cdot e_c) > U(b)$ for all $\epsilon > 0$. This is the substantive constraint — it encodes "more is always better." Unlike the first two, this does *not* come for free; it must be verified per utility function.
+
+    **Enforcing Non-Satiation**: Since Completeness and Transitivity are automatic, the design question reduces to structural enforcement of Non-Satiation. For our Cobb-Douglas family (see below), this holds precisely when all exponents $\alpha_i > 0$ and all bundle quantities $x_i > 0$. We can enforce this at the type level by representing exponents as `{r : ℝ // r > 0}` and Bundle quantities as `{r : ℝ // r > 0}`.
+
 *   **Marginal Utility ($MU$)**: The rate of change of utility as an agent consumes one more unit of a good (the partial derivative $\partial U / \partial x_i$).
+
 *   **Marginal Rate of Substitution ($MRS_{i,j}$)**: The rate at which an agent can substitute good $x_j$ for good $x_i$ while maintaining the same level of utility. Formally, $MRS_{i,j} = MU_i / MU_j$, giving the amount of $x_j$ the agent would willingly give up per additional unit of $x_i$ gained.
-    *   [ ] TODO: write a Lean 4 implementation of MRS. 
+
+### Canonical Utility Functions
+
+Three canonical forms illuminate different behavioral assumptions:
+
+**1. Cobb-Douglas** — $U(b) = \prod_{i} b_i^{\alpha_i}$
+
+The workhorse of our simulation. Goods are *smoothly substitutable*: agents hold interior optima (they always want some of everything). The exponents $\alpha_i$ encode relative preference intensities. Non-satiation holds as long as $\alpha_i > 0$ and $b_i > 0$. MRS is always defined and equals $(\alpha_i / b_i) / (\alpha_j / b_j)$, which varies continuously with the bundle — giving rise to the familiar convex indifference curves.
+
+```lean
+-- Cobb-Douglas: U(b; α) = ∏ b(c)^α(c)
+def cobbDouglasU (α : Commodity → ℝ) (b : Bundle) : Utility :=
+  allCommodities.foldl (fun acc c => acc * (b c) ^ (α c)) 1
+
+-- MU of good c under Cobb-Douglas: MU_c = α_c · U(b) / b(c)
+-- Derived by differentiating the product rule: ∂/∂xc [∏ xᵢ^αᵢ] = αc · U / xc
+def cobbDouglasMU (α : Commodity → ℝ) (c : Commodity) (b : Bundle) : ℝ :=
+  α c * cobbDouglasU α b / b c
+
+-- MRS_{ci, cj} under Cobb-Douglas = MU_ci / MU_cj = (α_ci · b_cj) / (α_cj · b_ci)
+def cobbDouglasMRS (α : Commodity → ℝ) (ci cj : Commodity) (b : Bundle) : ℝ :=
+  cobbDouglasMU α ci b / cobbDouglasMU α cj b
+```
+
+**2. Leontief (Perfect Complements)** — $U(b) = \min_i \bigl( b_i / r_i \bigr)$
+
+Goods must be consumed in fixed proportions. A blacksmith needs exactly 1 Wood per 2 Manna — having 10 Wood and no Manna yields zero surplus Wood utility. MRS is undefined at the kink (the corner solution). This models production recipes or rigid consumption habits.
+
+```lean
+-- Leontief: U(b) = min over all c of (b(c) / ratio(c))
+-- Initialise the fold at ⊤ (Float.inf) so every commodity is genuinely considered once.
+def leontiefU (ratio : Commodity → ℝ) (b : Bundle) : Utility :=
+  allCommodities.foldl (fun acc c => min acc (b c / ratio c)) Float.inf
+```
+
+**3. Quasilinear** — $U(b) = v(b_{c_0}) + b_{\text{numeraire}}$
+
+Linear in the Numéraire, concave in a primary good $c_0$. Eliminates income effects on $c_0$: willingness to pay for $c_0$ is independent of wealth. This simplifies demand analysis because the marginal value of $c_0$ depends only on its own quantity, not on how rich the agent is.
+
+```lean
+-- Quasilinear: U(b) = v(b(primaryGood)) + b(MithrilMetal)
+-- v is any concave function (e.g., √x or ln x)
+def quasilinearU (v : ℝ → ℝ) (primaryGood : Commodity) (b : Bundle) : Utility :=
+  v (b primaryGood) + b .MithrilMetal
+```
+
+### Indifference Curves and the $(N-1)$-Dimensional Preference Surface
+
+An **indifference surface** at utility level $k$ is the set of all bundles yielding exactly $k$ utility:
+$$\mathcal{I}(k) = \{ b \in \mathbb{R}^N_{>0} : U(b) = k \}$$
+
+This surface is $(N-1)$-dimensional — one degree of freedom is consumed by holding utility fixed. For our 4-good economy, indifference "curves" are 3-dimensional surfaces embedded in $\mathbb{R}^4$. Rather than enumerating points on these surfaces, agents solve the **dual expenditure minimization problem**: given a target utility $k$ and prices $p$, find the cheapest bundle on $\mathcal{I}(k)$. This yields the Hicksian demand and is the computational backbone of `generate_optimal_trade` in Section 5.
 
 ### The Computational Efficiency of a Numéraire
 
@@ -60,91 +120,113 @@ These states output composite biases. For instance, escalating `hunger` steepens
 
 ```lean
 structure AgentNature where
-  influenceLove : ℝ
-  mithrilLove   : ℝ
+  influenceLove : {r : ℝ // r > 0}  -- must be strictly positive to satisfy Non-Satiation
+  mithrilLove   : {r : ℝ // r > 0}  -- must be strictly positive to satisfy Non-Satiation
   openness      : ℝ
   conscientiousness : ℝ
 
 structure AgentState where
-  hunger   : ℝ
-  hp       : ℝ
-  exposure : ℝ
-  fatigue  : ℝ
+  hunger   : ℝ  -- in [0, 1]; 1 = starvation
+  hp       : ℝ  -- in [0, 1]; 0 = dead
+  exposure : ℝ  -- in [0, 1]; 1 = hypothermia
+  fatigue  : ℝ  -- in [0, 1]; 1 = collapse
+
+-- Derive Cobb-Douglas exponents from nature and physiological state.
+-- Survival pressure (hunger, exposure) amplifies exponents for the relevant goods,
+-- overriding long-term personality preferences when biological urgency is high.
+def utilityExponents (nature : AgentNature) (state : AgentState) : Commodity → ℝ
+  | .Manna        => 1 + state.hunger        -- hunger steepens food preference
+  | .Wood         => 1 + state.exposure      -- exposure steepens shelter preference
+  | .MithrilMetal => nature.mithrilLove.val
+  | .Influence    => nature.influenceLove.val
+
+-- Agent utility: Cobb-Douglas with state-modulated exponents
+def agentU (b : Bundle) (nature : AgentNature) (state : AgentState) : Utility :=
+  cobbDouglasU (utilityExponents nature state) b
+
+-- Marginal utility of commodity c given current bundle, nature, and state
+def agentMU (c : Commodity) (b : Bundle) (nature : AgentNature) (state : AgentState) : ℝ :=
+  cobbDouglasMU (utilityExponents nature state) c b
+
+-- MRS_{ci, cj}: units of cj the agent sacrifices per unit of ci at constant utility
+def agentMRS (ci cj : Commodity) (b : Bundle) (nature : AgentNature) (state : AgentState) : ℝ :=
+  cobbDouglasMRS (utilityExponents nature state) ci cj b
 
 structure Agent where
-  uuid : String
-  nature: AgentNature
-  state : AgentState
-  holdings : Bundle
-  trade_speed : ℝ -- Action priority within the discrete tick queue
-  
-  -- Utility dynamically shifts based on shifting physiological states
-  U : Bundle → AgentNature → AgentState → Utility
-    -- TODO: Don't just write a type signature for utility, write the cobb-douglas utility function here as well as a few other functions
-  MU : Commodity → Bundle → AgentNature → AgentState → Utility
-    -- TODO: don't just write the type signature, write an implementation
-  MRS : (a b : Commodity) → Bundle → AgentNature → AgentState → ℝ
-    -- TODO: don't just write the type signature, write an implementation
+  uuid        : String
+  nature      : AgentNature
+  state       : AgentState
+  holdings    : Bundle
+  trade_speed : ℝ   -- Action priority within the discrete tick queue
+
+  U   : Bundle → AgentNature → AgentState → Utility := agentU
+  MU  : Commodity → Bundle → AgentNature → AgentState → Utility := agentMU
+  MRS : (ci cj : Commodity) → Bundle → AgentNature → AgentState → ℝ := agentMRS
 ```
 
 If an agent's `state` deteriorates fully (e.g., invoking `dieOfStarvation` when `hunger` caps out), they are purged from the iteration loop.
 
 ## 5. Algorithmic Trading & The Simulation Loop
 
+### How Market Prices Emerge from Agent MRS Values
+
+Before examining the mechanics of trading, it is worth understanding where market prices come from in the first place. Prices are not exogenous — they are an emergent property of the heterogeneous MRS values held by agents across the economy.
+
+The key insight is that each agent's MRS against the Numéraire is their personal **reservation price** for a good. An agent with $MRS_{\text{Wood}, \text{MithrilMetal}} = 8$ is willing to pay up to 8 MithrilMetal for 1 Wood. If the market price of Wood is 6, they will buy (gaining utility); if it is 10, they will sell.
+
+The Continuous Double Auction (CDA) aggregates these reservation prices into buy and sell orderbooks. Buyers submit limit bids at or below their reservation price; sellers submit limit asks at or above theirs. A trade executes when a bid and ask cross. The **market-clearing price** settles at the point where the marginal buyer's reservation price meets the marginal seller's — in the language of general equilibrium, this is the **Walrasian equilibrium price**, at which every agent's MRS against the Numéraire equals the market price.
+
+Prices therefore encode the MRS of the last (marginal) trader. When a sudden hunger spike raises every agent's $MRS_{\text{Manna}, \text{MithrilMetal}}$, bids for Manna surge and its market price rises to restore equilibrium. The CDA is simply the mechanism that aggregates and reveals this distributed information.
+
 ### The Discrete Time Architecture
 1. **State Decay**: At the top of a tick, the environment cascades metabolic effects (hunger ticks up, cold drops HP if exposed). The agent's curve $U$ bends to urgently favor survival goods over long-term goals.
 2. **Execution Order**: Agents are sorted by their continuous `trade_speed` characteristic.
-3. **Observation & Decision**: Each agent calculates their new structural $MRS$, observes the Continuous Double Auction (CDA) orderbooks, and computes a target macro trade.
+3. **Observation & Decision**: Each agent calculates their new structural $MRS$, observes the CDA orderbooks, and computes a target macro trade.
 
 ### Solving the Optimization Problem
 
 On their turn, agents solve exactly one optimization problem: maximizing the utility of a prospective terminal bundle, tightly constrained by their strict budgetary limits.
 
 ```lean
--- Spot prices read from the global CDA in terms of MithrilMetal
-  -- TODO: hold on, I feel like we jumped ahead here. We didn't describe how the market price arises from the CDA. At a high level, I believe that market prices are the result of of the various MRS values of all agents in the economy. 
-def MarketPrices := Commodity → Quantity 
+-- Spot prices in terms of MithrilMetal, aggregated from the global CDA orderbooks.
+-- Each price p(c) reflects the MRS of the marginal trader for commodity c.
+def MarketPrices := Commodity → Quantity
 
 -- Returns an ideal delta bundle (positive for buys, negative for sells)
-def generate_optimal_trade (agent : Agent) (prices : MarketPrices) : Bundle := 
+def generate_optimal_trade (agent : Agent) (prices : MarketPrices) : Bundle :=
   -- maximize: agent.U (agent.holdings + trade) agent.nature agent.state
-  -- subject to: dot_product(trade, prices) ≤ 0  (net expenditure cannot exceed proceeds)
-  let budget_constraint := fun t => dot_product t prices <= 0
-  argmax (fun t => agent.U (agent.holdings + t) agent.nature agent.state) budget_constraint
+  -- subject to: dot_product(trade, prices) ≤ 0          (budget balance: proceeds cover expenditures)
+  --             ∀ c, agent.holdings c + trade c ≥ 0      (non-negativity: cannot sell what you don't own)
+  let feasible := fun t =>
+    dot_product t prices <= 0 ∧ ∀ c, agent.holdings c + t c ≥ 0
+  argmax (fun t => agent.U (agent.holdings + t) agent.nature agent.state) feasible
 ```
 
 ### Trade Intention Slicing
 
 Agents do not submit raw macro arrays to the system. The optimization subroutine outputs an ideal bundle delta (e.g., "I must acquire exactly 15 Wood and 3 Manna"). This intent is routed to the agent's internal **Trade Intention System**. This system algorithmically slices the macro-target into specific limit buy and sell layers directed straight into the global **Continuous Double Auction**. CDAs evaluate and match these granular orders purely if spreads cross.
 
+*Note on AMM equivalence*: The optimization problem above closely mirrors how Automated Market Makers work. A constant-product AMM (e.g., Uniswap's $x \cdot y = k$) or a weighted AMM (e.g., Balancer's $\prod x_i^{w_i} = k$) is a market maker that enforces trades along an indifference surface. Notably, Balancer's formula with weights $w_i$ is mathematically isomorphic to a Cobb-Douglas utility function with exponents $\alpha_i = w_i$. This means agents in a bartering sub-economy could swap goods directly against an AMM pool whose price curve is derived from the Cobb-Douglas indifference geometry — an interesting future extension before a full CDA infrastructure is in place.
+
 ### Beyond the CDA: Combinatorial Auctions
 *Future scope note:* While CDAs are pristine for singular commodities, Combinatorial Auctions permit bids for indivisible mixed lots of goods. Because evaluating these requires solving the NP-hard Winner Determination Problem (equivalent to set packing), they will operate completely outside the strict simulation tick-loop as asynchronous global events. Agents will compute their total max willingness to pay using their $U$-function, place closed bids, and the auction supervisor will execute distribution simultaneously while the global clock freezes.
 
 ## 6. Type-Level Guarantees & Verification
 
-By modeling structural economic mechanics within dependent type theory (or robust Rust traits), we gain strong formal guarantees. In particular, encoding the budget constraint `dot_product(trade, prices) ≤ 0` as a proof obligation means that any proposed trade must carry evidence of feasibility. While this does not eliminate all runtime checks (numerical optimization still occurs at runtime), it structurally prevents ill-typed trades from being constructed in the first place.
+By modeling structural economic mechanics within dependent type theory (or robust Rust traits), we gain strong formal guarantees. In particular, encoding the feasibility constraint — `dot_product(trade, prices) ≤ 0` (budget balance) and `∀ c, holdings c + trade c ≥ 0` (non-negativity) — as proof obligations means that any proposed trade must carry evidence of both conditions. While this does not eliminate all runtime checks (numerical optimization still occurs at runtime), it structurally prevents ill-typed trades from being constructed in the first place.
 
 Similarly, bounding state properties (e.g., `hunger ∈ [0, 1]`) at the type level isolates the complexity of multi-variate modeling, ensuring that shifting environments organically compel agents to mediate their idiosyncratic trait desires against rigid biological facts.
 
+As noted in Section 3, Non-Satiation can be enforced structurally by requiring Cobb-Douglas exponents to inhabit the subtype `{r : ℝ // r > 0}` and bundle quantities to inhabit `{r : ℝ // r > 0}`. Under these constraints, a proof of Non-Satiation for `cobbDouglasU` is mechanically derivable — a well-typed agent *cannot* hold a utility function that violates the axioms.
 
----
+## 7. Simulation as a Strategic Game
 
-- [ ] TODO: here is other content that I want you to weave into this Literate programming document where it makes sense:
+The simulation is not only a passive model — it is a platform for strategic play. Once the market loop is operational, a human (or AI controller) can assume the role of any agent and steer toward arbitrary strategic aims while the other agents pursue their own utility-maximizing ends:
 
+*   **Survival run**: Maximize personal utility subject to keeping all physiological states below critical thresholds.
+*   **Resource monopoly**: Accumulate enough Manna to drive up its price, then exploit the inelastic demand of starving agents.
+*   **Political capture**: Corner the supply of Influence to dominate social hierarchies and extract rents.
+*   **Market manipulation**: Engineering a liquidity crisis, triggering cascading sell-offs, or engineering a short squeeze on MithrilMetal.
+*   **Cooperative play**: Coordinate with other agents to stabilize prices around Pareto-efficient outcomes, resisting defection.
 
-- We already described the `goods`/commodities that exist
-- We also arbitrarily chose one `Good` as a numeraire (hard-coded for now, in the future can vary across markets)
-- Agents have
-  - an arbitrary `self.nature` (immutable)
-  - an arbitrary utility function over goods, which maps goods to a utility value (their preferences for each good)
-    - `fn Utils(goods: Set<Good>, self.nature) -> Map<Good, ℝ>`
-    - ==TODO/Question==: how do we ensure the utility function satisfies the axioms of utility?
-- From an agent's utility function we can calulate `MU`, `MRS` of each good against the numeraire (money) good (let's say it's `Gold`) -- which is to say, we know the price they *would* pay for each good.
-- Now, we can plot their multi-dimensional cobbs douglas indifference curves. They only have their actual package of resources.
-
-- Now that we know what they are indifferent to, we can determine what they would like to trade for.
-  - We can generate possible buy/sell orders they could make and calculate the expected utility if those orders went through. If the expected utility of a trade is higher then their current utility, then we know that this would trade them towards a "higher" preference curve. They make the order that maximizes their utility.
-    - I think we could do something similar in a bartering swap style AMM (either regular (e.g. Uniswap) or weighted (Balancer)).
-- And now that agents know what they would trade for, we can simulate a market and make a trading simulator.
-  - ==TODO/Question==: is there a way to calculate all possible N-1 dimensional preference curves across N goods? If so, I think we could use this to generate optimal trading goals. This could be especially interesting in a combinatorial auction.
-- And once we have a trading simulator we can supervise, we can play as an Agent whose job it is to maximize our own utility, or else achieve any arbitrary aims (like maximizing gold while still being able to survive, or getting a monopoly on food to kill everyone else, or cause other market failures, or buy up all of the real estate, or buy up all of the "reputation" stock (political power)).
+This game-like framing also makes the simulator a natural testbed for studying real-world market failures: monopoly formation, speculative bubbles, hoarding under uncertainty, and the tragedy of the commons all emerge organically from the same agent-level utility mechanics.
