@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/default.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-it-texmath/css/texmath.min.css">
+<link rel="stylesheet" href="file:////Users/haydenlebaron/.antigravity/extensions/goessner.mdmath-2.7.4/themes/default/style.css">
+
+</head>
+<body class="markdown-body">
+<span id="mermaid" aria-hidden="true"
+                    data-dark-mode-theme="redux-dark"
+                    data-light-mode-theme="redux"
+                    data-max-text-size="undefined"></span>
+                <h1 id="brainstorm-2026-03-31t1235">Brainstorm: 2026-03-31T12:35</h1>
+<p>Intuitively <em>Marginal Utility</em> is the rate of change of utility as you consume one more unit of a good.</p>
+<p>What is with the <em>Marginal Utility</em> of a good <code>xi</code> (<code>MU_xi</code>) in an <code>n</code>-dimensional space?</p>
+<pre><code class="language-ts"><span class="hljs-comment">/** The marginal utility of good xi is the partial derivative of the utility function with respect to good xi*/</span>
+<span class="hljs-keyword">let</span> <span class="hljs-title function_">MU_xi</span>(x1, x2, x3, ..., xn) = ∂<span class="hljs-title function_">U</span>(x1, x2, x3, ..., xn) / ∂xi
+  where i ∈ {<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, ..., n}
+</code></pre>
+<p>What, then is the Marginal Rate of Substitution of a good xi for a good xj <code>(MRS_xi_xj)</code> in an <code>n</code>-dimensional space?</p>
+<pre><code class="language-ts"><span class="hljs-comment">/** The marginal rate of substitution of good xi for good xj is the ratio of the marginal utilities of good xi and good xj */</span>
+<span class="hljs-keyword">let</span> <span class="hljs-title function_">MRS_xi_xj</span>(x1, x2, x3, ..., xn) = <span class="hljs-title function_">MU_xi</span>(x1, x2, x3, ..., xn) / <span class="hljs-title function_">MU_xj</span>(x1, x2, x3, ...xn)
+  where i, j ∈ {<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, ..., n}
+</code></pre>
+
+</body>
+</html>
