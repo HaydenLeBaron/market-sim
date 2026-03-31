@@ -61,7 +61,7 @@ fn MU(of∊goods, goods) := ∂U(goods)/∂x
 
 **Formally**:
 ```rs /math pseudocode
-/** The marginal rate of substitution of good xi space for good xj (in an n-dimensional space) is the ratio of the marginal utilities of good xi and good xj */
+/** The marginal rate of substitution of good xi for good xj (in an n-dimensional space) is the ratio of the marginal utilities of good xi and good xj */
 fn PairwiseMRS_xi_xj(x1, x2, x3, ..., xn) := 
   MU_xi(x1, x2, x3, ..., xn) / MU_xj(x1, x2, x3, ..., xn)
   where i, j ∈ {1, 2, 3, ..., n}
@@ -127,7 +127,7 @@ fn barterPairs(goods:Set<Good>) :-
 }
 ```
 
-But there is a much simpler way to calculate barter pairs in a monetary economy as the price vector implicitly encodes all bartering pairs. Even though you only explicitly compute the N pairs against money, you ahven't lost the other combinations!
+But there is a much simpler way to calculate barter pairs in a monetary economy as the price vector implicitly encodes all bartering pairs. Even though you only explicitly compute the N pairs against money, you haven't lost the other combinations!
 
 ```rs math/pseudocode
 fn MRS(of_xi∊goods, for_xj∊goods, prices::Map<Good, ℝ>) 
@@ -160,7 +160,7 @@ type Good =
 | Food // Will be the only thing that can be consumed
 | Shelter // Will be the only thing that can be used to protect from the elements. This is a desire to rent or buy property
 | Water // Will be the only thing that can be used to quench thirst
-| Status // Represented and Traded as securities within an society/market/economy/tribe/polity For not economies/markets/clans/polity will be tightly coupled as a simplifying assumption
+| Status // Represented and Traded as securities within a society/market/economy/tribe/polity. For now, economies/markets/clans/polities will be tightly coupled as a simplifying assumption.
 
 
 fn goods 't -> Set<'t> := ... // generates the set of all `Good`s from a sum type representing goods
@@ -246,16 +246,16 @@ type agent =
   /** Events that befall an agent, dependent on their state */
   affects:
   {
-    fn dieOfStarvation(self.currHunger) → Bool 
+    fn dieOfStarvation(self.stateful.currHunger) → Bool 
     { self.stateful.isAlive = false; }
 
-    fn dieOfthirst(self.currThirs) → Bool
+    fn dieOfThirst(self.stateful.currThirst) → Bool
     { self.stateful.isAlive = false; }
 
-    fn dieOfExposure(self.currExposure) → Bool
+    fn dieOfExposure(self.stateful.currExposure) → Bool
     { self.stateful.isAlive = false; }
 
-    fn faintFromFatigue(self.currFatigue) → Bool
+    fn faintFromFatigue(self.stateful.currFatigue) → Bool
     { self.stateful.isAsleep = true; }
   }
   /** Events that an agent can bring about, dependent on their state */
@@ -275,7 +275,7 @@ type agent =
 
 ```
 
-```rs pesudocode
+```rs pseudocode
 fn utility: fn(goods) → ℝ,
 ```
 
@@ -286,9 +286,9 @@ Where is this going?
 
 - We already described the `goods` that exist, which is a `Set<Good>`.
   - Maybe we should be more precise and specify Resources, which are only `Good`s from the perspective of an `Agent`?
-- We also arbitrarily chose one `Good` as a numeraire (hard-coded for now, in the future can vary by societ/ymarket/economy/clan/polity)
+- We also arbitrarily chose one `Good` as a numeraire (hard-coded for now, in the future can vary by society/market/economy/clan/polity)
 - Agents have
-  - an aribitrary `self.nature` (immutable)
+  - an arbitrary `self.nature` (immutable)
   - an arbitrary utility function over goods, which maps goods to a utility value (their preferences for each good)
     - `fn Utils(goods: Set<Good>, self.nature) -> Map<Good, ℝ>`
     - ==TODO/Question==: how do we ensure the utility function satisfies the axioms of utility?
@@ -297,7 +297,7 @@ Where is this going?
 
 - Now that we know what they are indifferent to, we can determine what they would like to trade for.
   - We can generate possible buy/sell orders they could make and calculate the expected utility if those orders went through. If the expected utility of a trade is higher then their current utility, then we know that this would trade them towards a "higher" preference curve. They make the order that maximizes their utility.
-    - I think we could so something similar in a bartering swap style AMM (either regular (e.g. Uniswap) or weighted (Balance)).
+    - I think we could do something similar in a bartering swap style AMM (either regular (e.g. Uniswap) or weighted (Balancer)).
 - And now that agents know what they would trade for, we can simulate a market and make a trading simulator.
-  - ==TODO/Question==: is there a way to calculate all possible N-1 dimensional preference curves across N goods? If so, i think we could use this to generate optimal trading goals. This could be expecially interesting in a combinatorial auction.
+  - ==TODO/Question==: is there a way to calculate all possible N-1 dimensional preference curves across N goods? If so, I think we could use this to generate optimal trading goals. This could be especially interesting in a combinatorial auction.
 - And once we have a trading simulator we can supervise, we can play as an Agent whose job it is to maximize our own utility, or else achieve any arbitrary aims (like maximizing gold while still being able to survive, or getting a monopoly on food to kill everyone else, or cause other market failures, or buy up all of the real estate, or buy up all of the "reputation" stock (political power)).
