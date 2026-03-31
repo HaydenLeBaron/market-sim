@@ -37,8 +37,11 @@ def Bundle.sub (b1 b2 : Bundle) : Bundle := fun c => b1 c - b2 c
 To navigate the universe of goods, agents must be able to intrinsically value them.
 
 *   **Utility ($U$)**: A measure mapping a bundle of goods to a real number ($\mathbb{R}$). It obeys axioms of Completeness, Transitivity, and Non-satiation.
+    *  [ ] TODO: Give me a few canonical examples of utility functions and the assumptions they make. For example, the Cobb-Douglas Utility function, the Leontief Utility function, and the Quasilinear Utility function.
+       *  [ ] If I remember correctly, Cobb-Douglas  assumes Completeness, Transitivity, and Non-Satiation, but go into more detail as to what those mean formally.
 *   **Marginal Utility ($MU$)**: The rate of change of utility as an agent consumes one more unit of a good (the partial derivative $\partial U / \partial x_i$).
 *   **Marginal Rate of Substitution ($MRS_{i,j}$)**: The rate at which an agent can substitute good $x_j$ for good $x_i$ while maintaining the same level of utility. Formally, $MRS_{i,j} = MU_i / MU_j$, giving the amount of $x_j$ the agent would willingly give up per additional unit of $x_i$ gained.
+    *   [ ] TODO: write a Lean 4 implementation of MRS. 
 
 ### The Computational Efficiency of a Numéraire
 
@@ -77,8 +80,11 @@ structure Agent where
   
   -- Utility dynamically shifts based on shifting physiological states
   U : Bundle → AgentNature → AgentState → Utility
+    -- TODO: Don't just write a type signature for utility, write the cobb-douglas utility function here as well as a few other functions
   MU : Commodity → Bundle → AgentNature → AgentState → Utility
+    -- TODO: don't just write the type signature, write an implementation
   MRS : (a b : Commodity) → Bundle → AgentNature → AgentState → ℝ
+    -- TODO: don't just write the type signature, write an implementation
 ```
 
 If an agent's `state` deteriorates fully (e.g., invoking `dieOfStarvation` when `hunger` caps out), they are purged from the iteration loop.
@@ -96,6 +102,7 @@ On their turn, agents solve exactly one optimization problem: maximizing the uti
 
 ```lean
 -- Spot prices read from the global CDA in terms of MithrilMetal
+  -- TODO: hold on, I feel like we jumped ahead here. We didn't describe how the market price arises from the CDA. At a high level, I believe that market prices are the result of of the various MRS values of all agents in the economy. 
 def MarketPrices := Commodity → Quantity 
 
 -- Returns an ideal delta bundle (positive for buys, negative for sells)
@@ -118,3 +125,26 @@ Agents do not submit raw macro arrays to the system. The optimization subroutine
 By modeling structural economic mechanics within dependent type theory (or robust Rust traits), we gain strong formal guarantees. In particular, encoding the budget constraint `dot_product(trade, prices) ≤ 0` as a proof obligation means that any proposed trade must carry evidence of feasibility. While this does not eliminate all runtime checks (numerical optimization still occurs at runtime), it structurally prevents ill-typed trades from being constructed in the first place.
 
 Similarly, bounding state properties (e.g., `hunger ∈ [0, 1]`) at the type level isolates the complexity of multi-variate modeling, ensuring that shifting environments organically compel agents to mediate their idiosyncratic trait desires against rigid biological facts.
+
+
+---
+
+- [ ] TODO: here is other content that I want you to weave into this Literate programming document where it makes sense:
+
+
+- We already described the `goods`/commodities that exist
+- We also arbitrarily chose one `Good` as a numeraire (hard-coded for now, in the future can vary across markets)
+- Agents have
+  - an arbitrary `self.nature` (immutable)
+  - an arbitrary utility function over goods, which maps goods to a utility value (their preferences for each good)
+    - `fn Utils(goods: Set<Good>, self.nature) -> Map<Good, ℝ>`
+    - ==TODO/Question==: how do we ensure the utility function satisfies the axioms of utility?
+- From an agent's utility function we can calulate `MU`, `MRS` of each good against the numeraire (money) good (let's say it's `Gold`) -- which is to say, we know the price they *would* pay for each good.
+- Now, we can plot their multi-dimensional cobbs douglas indifference curves. They only have their actual package of resources.
+
+- Now that we know what they are indifferent to, we can determine what they would like to trade for.
+  - We can generate possible buy/sell orders they could make and calculate the expected utility if those orders went through. If the expected utility of a trade is higher then their current utility, then we know that this would trade them towards a "higher" preference curve. They make the order that maximizes their utility.
+    - I think we could do something similar in a bartering swap style AMM (either regular (e.g. Uniswap) or weighted (Balancer)).
+- And now that agents know what they would trade for, we can simulate a market and make a trading simulator.
+  - ==TODO/Question==: is there a way to calculate all possible N-1 dimensional preference curves across N goods? If so, I think we could use this to generate optimal trading goals. This could be especially interesting in a combinatorial auction.
+- And once we have a trading simulator we can supervise, we can play as an Agent whose job it is to maximize our own utility, or else achieve any arbitrary aims (like maximizing gold while still being able to survive, or getting a monopoly on food to kill everyone else, or cause other market failures, or buy up all of the real estate, or buy up all of the "reputation" stock (political power)).
