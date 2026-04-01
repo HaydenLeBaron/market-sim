@@ -156,8 +156,9 @@ structure Agent where
   uuid        : String
   nature      : AgentNature
   state       : AgentState
-  holdings    : Bundle
-  trade_speed : ℝ   -- Action priority within the discrete tick queue
+  holdings    : Bundle  -- current inventory, updated each tick before trading
+  endowment   : Bundle  -- per-tick in-kind income (Manna gathered, Wood chopped, MithrilMetal mined, etc.)
+  trade_speed : ℝ       -- Action priority within the discrete tick queue
 
   U   : Bundle → AgentNature → AgentState → Utility := agentU
   MU  : Commodity → Bundle → AgentNature → AgentState → Utility := agentMU
@@ -180,22 +181,39 @@ Prices therefore encode the MRS of the last (marginal) trader. When a sudden hun
 
 ### The Discrete Time Architecture
 1. **State Decay**: At the top of a tick, the environment cascades metabolic effects (hunger ticks up, cold drops HP if exposed). The agent's curve $U$ bends to urgently favor survival goods over long-term goals.
-2. **Execution Order**: Agents are sorted by their continuous `trade_speed` characteristic.
-3. **Observation & Decision**: Each agent calculates their new structural $MRS$, observes the CDA orderbooks, and computes a target macro trade.
+2. **Endowment Payout**: Each agent receives their per-tick in-kind income: `agent.holdings += agent.endowment`. Income is paid in real goods — Manna gathered from bushes, Wood chopped from trees, MithrilMetal mined — not purely in numeraire. This makes the sim an **endowment economy**: an agent's effective budget each tick is the market value of their updated holdings $p \cdot \text{holdings}$, not a fixed cash allowance. Crucially, this means wealth is price-dependent — a Manna gatherer becomes richer in real terms when the Manna price rises, because the value of their endowment appreciates.
+3. **Execution Order**: Agents are sorted by their continuous `trade_speed` characteristic.
+4. **Observation & Decision**: Each agent calculates their new structural $MRS$, observes the CDA orderbooks, and computes a target macro trade.
 
 ### Solving the Optimization Problem
 
-On their turn, agents solve exactly one optimization problem: maximizing the utility of a prospective terminal bundle, tightly constrained by their strict budgetary limits.
+On their turn, agents solve exactly one optimization problem: maximizing the utility of a prospective terminal bundle, subject to the constraint that the terminal bundle's market value cannot exceed the market value of their current holdings (which already include this tick's endowment payout). This is the standard endowment economy budget constraint — wealth is not a fixed cash figure but the price-dependent value of the goods the agent actually holds.
+
+**Does the budget constraint bind?** The constraint is an inequality ($p \cdot \text{trade} \leq 0$), so agents are not formally required to spend their full endowment value. However, Non-Satiation (all Cobb-Douglas exponents $> 0$) guarantees that an agent always prefers more of any good — leaving budget slack is never optimal. As a result, the constraint holds at equality in practice: agents always exhaust the full market value of their holdings through reallocation. This is not an assumption but a theorem: it follows directly from the utility axioms.
+
+The one exception is **speculative holding**: an agent might rationally keep excess holdings in a good if they expect its price to rise next tick. The base `generate_optimal_trade` optimizer is myopic (single-tick) and cannot reason about this. A speculative strategy would require a separate inter-temporal layer on top of the base optimizer.
 
 ```lean
 -- Spot prices in terms of MithrilMetal, aggregated from the global CDA orderbooks.
 -- Each price p(c) reflects the MRS of the marginal trader for commodity c.
 def MarketPrices := Commodity → Quantity
 
--- Returns an ideal delta bundle (positive for buys, negative for sells)
+-- Returns an ideal delta bundle (positive for buys, negative for sells).
+-- PRECONDITION: agent.holdings must already include this tick's endowment payout
+-- (step 2 of the tick loop) before this function is called.
+--
+-- Budget interpretation (endowment economy):
+--   dot_product(trade, prices) ≤ 0
+--   ⟺  p · (holdings + trade) ≤ p · holdings
+--   ⟺  value of terminal bundle ≤ value of current holdings at market prices
+--
+-- Agents who are net sellers of a good (endowment > consumption) benefit when
+-- its price rises; net buyers are hurt. This endowment income effect is the key
+-- difference from a fixed-wage numeraire model and arises automatically from
+-- the constraint once holdings are updated with in-kind income.
 def generate_optimal_trade (agent : Agent) (prices : MarketPrices) : Bundle :=
   -- maximize: agent.U (agent.holdings + trade) agent.nature agent.state
-  -- subject to: dot_product(trade, prices) ≤ 0          (budget balance: proceeds cover expenditures)
+  -- subject to: dot_product(trade, prices) ≤ 0          (budget balance: terminal value ≤ endowment value)
   --             ∀ c, agent.holdings c + trade c ≥ 0      (non-negativity: cannot sell what you don't own)
   let feasible := fun t =>
     dot_product t prices <= 0 ∧ ∀ c, agent.holdings c + t c ≥ 0
