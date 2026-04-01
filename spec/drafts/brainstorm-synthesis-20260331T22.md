@@ -200,9 +200,51 @@ namespace Commodity
 end Commodity
 ```
 
-### 2.2. Time
+### 2.3. Commodity **Markets**: Continuous Double Auctions (CDAs)
 
-We've established that the world consists of `Agent.T`s and `Commodity.T`s, and we've hinted at the fact that `Agent.T`s are "stateful" in a few senses: we've made reference to "mutable" (functionally updatable) `Agent.State.hunger`, `Agent.State.hp`, and `Agent.State.exposure`–which implies the existence of time.
+#### Combinatorics of Bartering vs Monetary Economies
+
+In a bartering economy with $N$ goods, there are $\binom{N}{2} = N(N-1)/2$ trading pairs and therefore that many markets. In contrast, if we choose one good arbitrarily to be a numeraire (unit of account) and treat it as money, then there are only $N-1$ markets. Therefore we see that monetary economies solve the problem of *double coincidence of wants* and the related problem of *combinatorial explosion of trading pairs*.
+
+Another elegant property of choosing a numeraire is that it still encodes the relative bartering value of all other goods by dividing their "prices"–their bartering value against the numeraire, like so:
+
+```lean
+-- [ ] TODO: illustrate the above in a code block
+```
+
+But so far we have been vague about how "barting value" and "prices" are determined. As our simulation will be a monetary economy, we will need to determine the price of goods in terms of a numeraire, which we will treat as money.
+
+We will define our functions to compute the price of goods in terms of any good set to be numeraire, though in many of our practical examples we will treat `Commodities.T.Mithril` as our numeraire, by plugging it in as the numeraire parameter in our formalizations.
+
+#### Continuous Double Auctions (CDAs)
+
+Our commodity markets will be facilitated by Continuous Double Auctions (CDAs). 
+- [ ] Write: CDAs are how most modern stock markets and centralized crypto exchanges (CEXs) work.
+- [ ] Write: Benefits of CDAs include liquidity, efficiency, and price discovery. Price discovery is the process by which the market determines the price of a good. Prices in our simulation, therefore, will emerge from the interactions of agents, rather than being hard-coded or set by a centralized authority (like an in-game shopkeeper agent or the developer).
+- [ ] Write: In a CDA, agents can submit buy orders (bids) and sell orders (asks) at any time. 
+  - [ ] Two order types (Informally):
+    - [ ] **Limit Order** `LimitOrder.T`: orders that are only executed when the price is right
+      - [ ] Informally
+      - [ ] Formally (Lean code)
+    - [ ] **Market Order** `MarketOrder.T`: orders that are executed immediately at the best available price
+      - [ ] Informally
+      - [ ] Formally (Lean code)
+  - [ ] The **Order Book**
+    - [ ] Representation
+      - [ ] Informally
+        - **Order Book**:
+          - numeraire (determines the unit of account)
+          - bids (buy orders)
+          - asks (sell orders)
+      - [ ] Formally (Lean code)
+    - [ ] Trade Execution (Matching logic)
+      - [ ] Informally
+      - [ ] Formally (Lean code)
+
+
+### 2.X. Time
+
+We've established that the world consists of `Agent.T`s and `Commodity.T`s, and we've hinted at the fact that `Agent.T`s are "stateful" in a few senses: we've made reference to "mutable" (functionally updatable) `Agent.State.hunger`, `Agent.State.hp`, and `Agent.State.exposure`–which presupposes some conception of time.
 
 
 ## 3. Commodity Markets Facilitated by CDAs
