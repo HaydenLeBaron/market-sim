@@ -29,7 +29,7 @@
       - Agents *consuming*, *suffering*, *gathering*, and *trading* from World_ti -> World_tj
 - (3) A more sophisticated trading strategy for simulating more realistic markets
   - Motivation: the earlier strategy we defined wasn't made on the basis of an agent introspecting to maximize its utility. 
-  - Utility, Marginal Utility, MRS, Indifference, Budget Constraings, and Optimization as the basis for agents making trades.
+  - Utility, Marginal Utility, MRS, Indifference, Budget Constraints, and Optimization as the basis for agents making trades.
     - A simplified hierarchy of needs: Needs (Survival) -> Wants (Preferences): a tale of two trading strategies.
 - (4) The player: acting on behalf of an agent
 - (5) A precise description of a dashboard (and screenshots)
@@ -276,11 +276,13 @@ namespace Order
   structure LimitOrder.T where
     /-- the agent placing the order -/
     agentId : String
-    /-- the commodity being bought or sold (the numeraire is always the other side) -/
+    /-- the commodity being bought or sold -/
     commodity : Commodity.T
+    /-- the commodity that prices are quoted in -/
+    numeraire : Commodity.T
     /-- whether this is a buy or sell order -/
     side : Side
-    /-- the limit price in units of the numeraire per unit of commodity.
+    /-- the limit price in units of numeraire per unit of commodity.
         For Buy: maximum price willing to pay.
         For Sell: minimum price willing to accept. -/
     price : ℝ≥0
@@ -305,6 +307,8 @@ namespace Order
     agentId : String
     /-- the commodity being bought or sold -/
     commodity : Commodity.T
+    /-- the commodity that prices are quoted in -/
+    numeraire : Commodity.T
     /-- whether this is a buy or sell order -/
     side : Side
     /-- the quantity of the commodity to buy or sell -/
@@ -326,14 +330,16 @@ Note that a `MarketOrder.T` is essentially a `LimitOrder.T` without a `price` fi
 
 The difference between the best bid and the best ask is called the **spread**. When the best bid price >= the best ask price, a trade can occur.
 
-There is one order book per non-numeraire commodity. Since we have 4 commodities and Mithril is our numeraire, we have 3 order books: Manna/Mithril, Wood/Mithril, and Influence/Mithril.
+Each order book is parameterized by a trading pair: a commodity and a numeraire. The order book is agnostic to which commodity serves as the numeraire–that choice is purely by convention. In a monetary economy where we choose Mithril as numeraire, we'd have 3 books (Manna/Mithril, Wood/Mithril, Influence/Mithril). But the structure itself could just as well support a bartering economy with all $\binom{N}{2}$ pairs.
 
 **Formally**:
 ```lean
 namespace OrderBook
   structure T where
-    /-- the commodity this order book is for -/
+    /-- the commodity being traded -/
     commodity : Commodity.T
+    /-- the commodity that prices are quoted in -/
+    numeraire : Commodity.T
     /-- resting buy limit orders, sorted by price descending (best bid first),
         with ties broken by timestamp ascending, then speed descending -/
     bids : List LimitOrder.T
@@ -388,9 +394,11 @@ namespace Trade
     sellerAgentId : String
     /-- the commodity traded -/
     commodity : Commodity.T
+    /-- the commodity that the price is quoted in -/
+    numeraire : Commodity.T
     /-- the quantity traded -/
     quantity : ℝ≥0
-    /-- the price at which the trade executed (in numeraire per unit) -/
+    /-- the price at which the trade executed (in numeraire per unit of commodity) -/
     price : ℝ≥0
     /-- the tick on which the trade occurred -/
     timestamp : ℕ
