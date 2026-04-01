@@ -252,28 +252,187 @@ We will define our functions to compute the price of goods in terms of any good 
 
 #### Continuous Double Auctions (CDAs)
 
-Our commodity markets will be facilitated by Continuous Double Auctions (CDAs). 
-- [ ] Write: CDAs are how most modern stock markets and centralized crypto exchanges (CEXs) work.
-- [ ] Write: Benefits of CDAs include liquidity, efficiency, and price discovery. Price discovery is the process by which the market determines the price of a good. Prices in our simulation, therefore, will emerge from the interactions of agents, rather than being hard-coded or set by a centralized authority (like an in-game shopkeeper agent or the developer).
-- [ ] Write: In a CDA, agents can submit buy orders (bids) and sell orders (asks) at any time. 
-  - [ ] Two order types (Informally):
-    - [ ] **Limit Order** `LimitOrder.T`: orders that are only executed when the price is right
-      - [ ] Informally
-      - [ ] Formally (Lean code)
-    - [ ] **Market Order** `MarketOrder.T`: orders that are executed immediately at the best available price
-      - [ ] Informally
-      - [ ] Formally (Lean code)
-  - [ ] The **Order Book**
-    - [ ] Representation
-      - [ ] Informally
-        - **Order Book**:
-          - numeraire (determines the unit of account)
-          - bids (buy orders)
-          - asks (sell orders)
-      - [ ] Formally (Lean code)
-    - [ ] Trade Execution (Matching logic)
-      - [ ] Informally
-      - [ ] Formally (Lean code)
+Our commodity markets will be facilitated by Continuous Double Auctions (CDAs). CDAs are the mechanism underlying most modern stock exchanges (NYSE, NASDAQ) and centralized cryptocurrency exchanges (Binance, Coinbase). They are called "continuous" because orders can be submitted at any time (as opposed to a batch auction where all orders are collected and cleared at once), and "double" because both buyers and sellers can post priced orders (as opposed to a one-sided auction like an English auction where only buyers bid).
+
+The key benefits of CDAs for our simulation are:
+
+1. **Liquidity**: Because orders can be submitted and matched at any time, agents can trade whenever they need to–they don't have to wait for a scheduled auction round.
+2. **Efficiency**: The matching algorithm is simple and deterministic, making it easy to reason about formally.
+3. **Price discovery**: Prices *emerge* from the interactions of agents, rather than being hard-coded or set by a centralized authority (like an in-game shopkeeper NPC or the developer). The last traded price in a CDA is the market's best estimate of the "true" value of a commodity at that moment. This emergent pricing is exactly what makes our simulation interesting–we get to observe what prices arise from the agents' needs, endowments, and strategies.
+
+In a CDA, agents can submit **buy orders** (bids) and **sell orders** (asks) at any time. There are two order types:
+
+##### Limit Orders
+
+**Intuitively**: A limit order says "I want to buy (or sell) some quantity of a commodity, but only at a price at least as good as my limit price." A buy limit order will only execute at a price *at or below* the limit. A sell limit order will only execute at a price *at or above* the limit. If no matching counterparty exists, the limit order sits on the order book waiting to be filled.
+
+**Formally**:
+```lean
+namespace Order
+  inductive Side
+    | Buy
+    | Sell
+
+  structure LimitOrder.T where
+    /-- the agent placing the order -/
+    agentId : String
+    /-- the commodity being bought or sold (the numeraire is always the other side) -/
+    commodity : Commodity.T
+    /-- whether this is a buy or sell order -/
+    side : Side
+    /-- the limit price in units of the numeraire per unit of commodity.
+        For Buy: maximum price willing to pay.
+        For Sell: minimum price willing to accept. -/
+    price : ℝ≥0
+    /-- the quantity of the commodity to buy or sell -/
+    quantity : ℝ≥0
+    /-- the tick on which this order was submitted -/
+    timestamp : ℕ
+    /-- inherited from Agent.T.trade_speed; used for priority resolution when timestamps tie -/
+    speed : ℝ
+end Order
+```
+
+##### Market Orders
+
+**Intuitively**: A market order says "I want to buy (or sell) some quantity of a commodity *right now*, at whatever the best available price is." A buy market order will match against the lowest-priced sell limit orders on the book. A sell market order will match against the highest-priced buy limit orders on the book. If the order book is empty (or too thin to fill the full quantity), the unfilled portion of the market order is simply cancelled–it does *not* become a resting limit order.
+
+**Formally**:
+```lean
+namespace Order
+  structure MarketOrder.T where
+    /-- the agent placing the order -/
+    agentId : String
+    /-- the commodity being bought or sold -/
+    commodity : Commodity.T
+    /-- whether this is a buy or sell order -/
+    side : Side
+    /-- the quantity of the commodity to buy or sell -/
+    quantity : ℝ≥0
+    /-- the tick on which this order was submitted -/
+    timestamp : ℕ
+    /-- inherited from Agent.T.trade_speed; used for priority resolution when timestamps tie -/
+    speed : ℝ
+end Order
+```
+
+Note that a `MarketOrder.T` is essentially a `LimitOrder.T` without a `price` field–the price is determined by whatever is available on the order book.
+
+##### The Order Book
+
+**Intuitively**: An order book is the core data structure of a CDA. It maintains two sorted lists of resting limit orders for a single commodity (priced in the numeraire):
+- **Bids** (buy limit orders): sorted best-first, i.e. *highest* price first. The highest bid is called the **best bid**.
+- **Asks** (sell limit orders): sorted best-first, i.e. *lowest* price first. The lowest ask is called the **best ask**.
+
+The difference between the best bid and the best ask is called the **spread**. When the best bid price >= the best ask price, a trade can occur.
+
+There is one order book per non-numeraire commodity. Since we have 4 commodities and Mithril is our numeraire, we have 3 order books: Manna/Mithril, Wood/Mithril, and Influence/Mithril.
+
+**Formally**:
+```lean
+namespace OrderBook
+  structure T where
+    /-- the commodity this order book is for -/
+    commodity : Commodity.T
+    /-- resting buy limit orders, sorted by price descending (best bid first),
+        with ties broken by timestamp ascending, then speed descending -/
+    bids : List LimitOrder.T
+    /-- resting sell limit orders, sorted by price ascending (best ask first),
+        with ties broken by timestamp ascending, then speed descending -/
+    asks : List LimitOrder.T
+
+  /-- The best (highest) bid price, if any bids exist -/
+  def bestBid (ob : T) : Option ℝ≥0 :=
+    ob.bids.head?.map (·.price)
+
+  /-- The best (lowest) ask price, if any asks exist -/
+  def bestAsk (ob : T) : Option ℝ≥0 :=
+    ob.asks.head?.map (·.price)
+
+  /-- The spread between best ask and best bid.
+      A smaller spread indicates a more liquid market. -/
+  def spread (ob : T) : Option ℝ≥0 :=
+    match bestAsk ob, bestBid ob with
+    | some a, some b => some (a - b)
+    | _, _ => none
+end OrderBook
+```
+
+##### Trade Execution (Matching Logic)
+
+**Intuitively**: When a new order arrives, the matching engine tries to fill it against resting orders on the opposite side of the book. The rules are:
+
+1. **Price-time-speed priority**: Orders are matched against the best available counterparty. "Best" means: best price first, then earliest timestamp, then highest `trade_speed` (to break remaining ties).
+
+2. **Limit order arrives**:
+   - A new *buy* limit order is matched against resting asks, starting from the best (lowest) ask. A match occurs if the limit price >= the ask price. The trade executes at the *resting* order's price (the ask price), since the resting order was there first.
+   - A new *sell* limit order is matched against resting bids, starting from the best (highest) bid. A match occurs if the limit price <= the bid price. The trade executes at the *resting* order's price (the bid price).
+   - Matching continues until the incoming order is fully filled, or no more matchable resting orders exist. Any unfilled remainder of the incoming limit order is inserted into the book as a new resting order.
+
+3. **Market order arrives**:
+   - Identical to a limit order, except there is no price constraint–it matches greedily against the best available resting orders until filled.
+   - Any unfilled remainder is *cancelled* (not added to the book).
+
+4. **Partial fills**: If a resting order is only partially filled, it remains on the book with its quantity reduced by the filled amount.
+
+5. **Trade record**: Each match produces a `Trade.T` recording who traded, what, how much, and at what price. The price of the most recent trade is the **last price**–the market's current estimate of the commodity's value.
+
+**Formally**:
+```lean
+namespace Trade
+  /-- A record of a completed trade -/
+  structure T where
+    /-- the agent who placed the buy side -/
+    buyerAgentId : String
+    /-- the agent who placed the sell side -/
+    sellerAgentId : String
+    /-- the commodity traded -/
+    commodity : Commodity.T
+    /-- the quantity traded -/
+    quantity : ℝ≥0
+    /-- the price at which the trade executed (in numeraire per unit) -/
+    price : ℝ≥0
+    /-- the tick on which the trade occurred -/
+    timestamp : ℕ
+end Trade
+
+namespace OrderBook
+  /-- The result of attempting to execute an incoming order against the book -/
+  structure ExecutionResult where
+    /-- the updated order book after matching -/
+    book : OrderBook.T
+    /-- trades that were executed -/
+    trades : List Trade.T
+    /-- any unfilled quantity from the incoming order (0 if fully filled) -/
+    unfilledQty : ℝ≥0
+
+  /-- Match an incoming limit order against the book.
+      Returns the updated book (with any unfilled remainder inserted) and a list of trades. -/
+  def executeLimitOrder (ob : T) (order : LimitOrder.T) : ExecutionResult :=
+    -- 1. Match against opposite side:
+    --    If order.side = Buy, walk ob.asks from best (lowest) ask upward.
+    --      Match while ask.price <= order.price and order has remaining qty.
+    --    If order.side = Sell, walk ob.bids from best (highest) bid downward.
+    --      Match while bid.price >= order.price and order has remaining qty.
+    -- 2. For each match:
+    --    tradeQty := min(order.remainingQty, restingOrder.quantity)
+    --    tradePrice := restingOrder.price  (resting order's price wins)
+    --    Emit Trade.T, reduce both quantities.
+    --    If resting order fully filled, remove from book.
+    -- 3. If order has remaining qty, insert into appropriate side of book
+    --    in sorted position (maintaining price-time-speed priority).
+    -- 4. Return updated book + list of trades + unfilled qty (0 if inserted as resting).
+    sorry
+
+  /-- Match an incoming market order against the book.
+      Returns the updated book and a list of trades. Unfilled qty is cancelled. -/
+  def executeMarketOrder (ob : T) (order : MarketOrder.T) : ExecutionResult :=
+    -- Same as executeLimitOrder, but:
+    --   - No price constraint (always matches if resting orders exist)
+    --   - Unfilled remainder is discarded, NOT inserted into the book
+    sorry
+end OrderBook
+```
 
 
 ### 2.X. Time
