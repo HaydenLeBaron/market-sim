@@ -209,7 +209,41 @@ In a bartering economy with $N$ goods, there are $\binom{N}{2} = N(N-1)/2$ tradi
 Another elegant property of choosing a numeraire is that it still encodes the relative bartering value of all other goods by dividing their "prices"–their bartering value against the numeraire, like so:
 
 ```lean
--- [ ] TODO: illustrate the above in a code block
+namespace Commodity
+  /-- The price of a commodity in terms of a numeraire.
+      This is the "bartering value" of the commodity against the numeraire. -/
+  def priceIn (numeraire : T) (c : T) : ℝ≥0 := sorry -- determined by market (CDA)
+
+  /-- The relative bartering value of commodity `i` in terms of commodity `j`,
+      derived purely from their prices in the common numeraire.
+
+      Key insight: if 1 Manna costs 3 Mithril and 1 Wood costs 1.5 Mithril,
+      then the barter rate of Manna in terms of Wood is 3 / 1.5 = 2,
+      i.e., 1 Manna is worth 2 Wood.
+
+      This works for ANY choice of numeraire–the numeraire cancels out:
+        (price_i / numeraire) / (price_j / numeraire) = price_i / price_j
+  -/
+  def barterRate (numeraire : T) (i j : T) : ℝ≥0 :=
+    priceIn numeraire i / priceIn numeraire j
+
+  -- Example with Mithril as numeraire:
+  --   priceIn .Mithril .Manna     = 3.0   -- "1 Manna costs 3 Mithril"
+  --   priceIn .Mithril .Wood      = 1.5   -- "1 Wood costs 1.5 Mithril"
+  --   priceIn .Mithril .Influence = 10.0  -- "1 Influence costs 10 Mithril"
+  --   priceIn .Mithril .Mithril   = 1.0   -- "the numeraire prices itself at 1"
+  --
+  --   barterRate .Mithril .Manna .Wood          = 3.0 / 1.5  = 2.0
+  --     ↳ "1 Manna is worth 2 Wood"
+  --   barterRate .Mithril .Influence .Manna     = 10.0 / 3.0 ≈ 3.33
+  --     ↳ "1 Influence is worth ~3.33 Manna"
+  --
+  -- Thus N-1 prices (in the numeraire) encode all N(N-1)/2 barter exchange rates.
+end Commodity
+
+/-
+ASSUMPTION: currently we are assuming global commodity markets. Eventually on the roadmap we may want to have multiple "local" markets for each commodity. This will allow us to explore the concept of arbitrage of the same commodity across different markets.
+-/
 ```
 
 But so far we have been vague about how "barting value" and "prices" are determined. As our simulation will be a monetary economy, we will need to determine the price of goods in terms of a numeraire, which we will treat as money.
